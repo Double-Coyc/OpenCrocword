@@ -4,6 +4,7 @@ import { DEFAULT_LEVEL, HINT_COST, debug } from './core/constants.js';
 import { state } from './core/state.js';
 import { loadGameData } from './core/storage.js';
 import { fetchLevels } from './data/levels.js';
+import { claimBank } from './game/economy.js';
 import { showHint } from './game/hints.js';
 import {
     closeLevelMenu,
@@ -13,12 +14,14 @@ import {
 } from './game/menu.js';
 import { loadLevelData } from './game/session.js';
 import { initWheelInput, shuffleWheel } from './game/wheel.js';
-import { updateCoinUI } from './ui/hud.js';
+import { updateBankUI, updateCoinUI } from './ui/hud.js';
 import { initLevelComplete } from './ui/level-complete.js';
+import { showToast } from './ui/toast.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     loadGameData();
     updateCoinUI();
+    updateBankUI();
 
     setLevelLoader(loadLevelData);
     initWheelInput();
@@ -44,6 +47,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const closeBtn = document.getElementById('btn-close-levels');
     if (closeBtn) closeBtn.addEventListener('click', closeLevelMenu);
+
+    const claimBtn = document.getElementById('btn-claim-bank');
+    if (claimBtn) {
+        claimBtn.addEventListener('click', () => {
+            const amount = claimBank();
+            if (amount > 0) showToast(`Из копилки: +${amount}`);
+        });
+    }
 
     const menu = document.getElementById('level-menu');
     if (menu) {

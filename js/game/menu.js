@@ -8,6 +8,7 @@ import {
 } from '../core/constants.js';
 import { state } from '../core/state.js';
 import { isLevelCompleted } from '../core/storage.js';
+import { updateBankUI } from '../ui/hud.js';
 
 // Загрузчик уровня внедряется извне, чтобы не было циклического импорта.
 let levelLoader = null;
@@ -54,7 +55,7 @@ export function renderLevelMenu() {
             const crown = document.createElement('span');
             crown.className = 'level-crown';
             crown.setAttribute('aria-hidden', 'true');
-            crown.textContent = '♛';
+            crown.innerHTML = '<svg viewBox="0 0 24 24" focusable="false"><path d="M3 8l4.5 3.5L12 5l4.5 6.5L21 8l-1.8 10.5H4.8z" fill="currentColor"/></svg>';
             button.appendChild(crown);
         } else {
             button.setAttribute('aria-label', `Уровень ${num}`);
@@ -90,6 +91,7 @@ export function openLevelMenu() {
     const menu = document.getElementById('level-menu');
     if (!menu) return;
 
+    updateBankUI();
     renderLevelMenu();
     menu.classList.remove('hidden');
     menu.setAttribute('aria-hidden', 'false');

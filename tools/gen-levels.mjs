@@ -341,9 +341,29 @@ export function validateLevel(level, dictionary) {
         if (declared.has(word)) errors.push(`бонусное слово «${word}» уже есть в сетке`);
         bonusSeen.add(word);
     });
-    if (bonus.length > 12) warnings.push(`бонусных слов больше 12 (${bonus.length})`);
+    if (bonus.length < 3 || bonus.length > 8) warnings.push(`бонусных слов ${bonus.length}, ожидалось 3–8`);
 
-    // 8. Габариты
+    // 8. Монетные ячейки
+    const coinCells = Array.isArray(level.coinCells) ? level.coinCells : [];
+    const coinSeen = new Set();
+    if (coinCells.length < 1 || coinCells.length > 3) {
+        warnings.push(`монетных ячеек ${coinCells.length}, ожидалось 1–3`);
+    }
+    coinCells.forEach(cell => {
+        const row = Number(cell && cell.row);
+        const col = Number(cell && cell.col);
+        const key = `${row},${col}`;
+        if (!Number.isInteger(row) || !Number.isInteger(col)) {
+            errors.push('монетная ячейка: координаты должны быть целыми');
+            return;
+        }
+        if (!occ.has(key)) errors.push(`монетная ячейка (${row},${col}) вне сетки`);
+        if (![10, 20, 30].includes(cell.value)) errors.push(`монетная ячейка (${row},${col}): недопустимое значение ${cell.value}`);
+        if (coinSeen.has(key)) errors.push(`монетная ячейка (${row},${col}) продублирована`);
+        coinSeen.add(key);
+    });
+
+    // 9. Габариты
     const bounds = occ.size ? boardBounds(occ) : { rows: 0, cols: 0 };
     if (bounds.rows > 8 || bounds.cols > 8) warnings.push(`крупная сетка ${bounds.cols}×${bounds.rows}`);
     if (bounds.minRow < 0 || bounds.minCol < 0) errors.push('после построения остались отрицательные координаты');
@@ -359,9 +379,73 @@ export function validateLevel(level, dictionary) {
             intersections,
             rows: bounds.rows,
             cols: bounds.cols,
-            cells: occ.size
+            cells: occ.size,
+            coinCells: coinCells.length
         }
     };
+}
+
+// --------------------------------------------------------------- монетные ячейки
+
+// Сколько ячеек и по сколько монет за уровень: 1–5 → 1×10, 6–10 → 2×20, 11–15 → 3×30
+export function coinCellRule(levelNumber) {
+    const band = Math.min(2, Math.floor((Math.max(1, levelNumber) - 1) / 5));
+    return { count: band + 1, value: 10 * (band + 1) };
+}
+
+function cellWordCounts(level) {
+    const map = new Map();
+
+    (level.grid || []).forEach(entry => {
+        const word = String(entry.word || '');
+        const dir = entry.dir || (entry.direction === 'vertical' ? 'V' : 'H');
+        const [dr, dc] = DELTA[dir];
+
+        for (let i = 0; i < word.length; i++) {
+            const key = `${entry.row + dr * i},${entry.col + dc * i}`;
+            if (!map.has(key)) map.set(key, new Set());
+            map.get(key).add(word);
+        }
+    });
+
+    return map;
+}
+
+/**
+ * Детерминированно выбирает монетные ячейки: сначала пересечения,
+ * затем одиночные клетки; соседние ячейки не берём, если есть выбор.
+ */
+export function pickCoinCells(level, levelNumber = 1) {
+    const { count, value } = coinCellRule(levelNumber);
+    const map = cellWordCounts(level);
+
+    const cells = [...map.entries()]
+        .map(([key, words]) => {
+            const [row, col] = key.split(',').map(Number);
+            return { row, col, count: words.size };
+        })
+        .sort((a, b) => b.count - a.count || a.row - b.row || a.col - b.col);
+
+    const picked = [];
+
+    for (const minDist of [2, 1]) {
+        for (const cell of cells) {
+            if (picked.length >= count) break;
+            const spaced = picked.every(other =>
+                Math.abs(other.row - cell.row) >= minDist ||
+                Math.abs(other.col - cell.col) >= minDist
+            );
+            if (spaced) picked.push(cell);
+        }
+        if (picked.length >= count) break;
+    }
+
+    return picked.map(cell => ({ row: cell.row, col: cell.col, value }));
+}
+
+export function assignCoinCells(level, levelNumber = 1) {
+    level.coinCells = pickCoinCells(level, levelNumber);
+    return level;
 }
 
 // --------------------------------------------------------------- генерация
@@ -457,7 +541,7 @@ export function generateLevel(keyWord, dictionary, options = {}) {
     const {
         theme = 'jungle',
         targetWords = 5,
-        bonusLimit = 10,
+        bonusLimit = 8,
         attempts = 500,
         seed = 1
     } = options;
@@ -516,6 +600,8 @@ export function generateLevel(keyWord, dictionary, options = {}) {
         bonusWords
     };
 
+    assignCoinCells(level, options.levelNumber || 1);
+
     return { level, stats: { ...best.bounds, intersections: best.intersections, score: best.score } };
 }
 
@@ -525,7 +611,7 @@ export function generateEpisode(dictionary, options = {}) {
         seed = 20261119,
         theme = 'jungle',
         targetWords = 5,
-        bonusLimit = 10
+        bonusLimit = 8
     } = options;
 
     const keyCounts = new Map();
@@ -594,13 +680,18 @@ export function generateEpisode(dictionary, options = {}) {
     );
 
     const levels = accepted.map(item => item.level);
+    levels.forEach((level, index) => assignCoinCells(level, index + 1));
 
-    const finalReport = accepted.map((item, index) => ({
-        level: index + 1,
-        keyWord: item.level.keyWord,
-        ...item.validation,
-        stats: { ...item.validation.stats, ...item.generated.stats }
-    }));
+    const finalReport = accepted.map((item, index) => {
+        const validation = validateLevel(levels[index], dictionary);
+
+        return {
+            level: index + 1,
+            keyWord: item.level.keyWord,
+            ...validation,
+            stats: { ...validation.stats, ...item.generated.stats }
+        };
+    });
 
     return {
         levels,

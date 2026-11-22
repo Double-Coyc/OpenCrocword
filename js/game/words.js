@@ -2,10 +2,10 @@
 
 import { BONUS_REWARD, KEY_REWARD, debug } from '../core/constants.js';
 import { state } from '../core/state.js';
-import { getProgressEntry, saveGameData } from '../core/storage.js';
+import { getProgressEntry } from '../core/storage.js';
 import { shakeWordPreview } from '../ui/animations.js';
-import { updateCoinUI } from '../ui/hud.js';
 import { showToast } from '../ui/toast.js';
+import { addEarnedCoins } from './economy.js';
 import { revealWord } from './grid.js';
 
 // Можно ли набрать слово из букв, которые есть на колесе
@@ -36,9 +36,7 @@ export function handleWord(word, sources = null) {
         state.keyWordFound = true;
         getProgressEntry(state.currentLevel).keyFound = true;
 
-        state.currentCoins += KEY_REWARD;
-        updateCoinUI(true);
-        saveGameData();
+        addEarnedCoins(KEY_REWARD);
         showToast('Ключевое слово найдено!');
         debug(`Ключевое слово: ${word} (+${KEY_REWARD})`);
         return;
@@ -59,9 +57,7 @@ export function handleWord(word, sources = null) {
         state.foundBonusWords.add(word);
         getProgressEntry(state.currentLevel).bonus = [...state.foundBonusWords];
 
-        state.currentCoins += BONUS_REWARD;
-        updateCoinUI(true);
-        saveGameData();
+        addEarnedCoins(BONUS_REWARD);
         showToast(`+${BONUS_REWARD} за слово «${word}»`);
         debug(`Бонусное слово: ${word} (+${BONUS_REWARD})`);
         return;

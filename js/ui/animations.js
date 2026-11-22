@@ -88,3 +88,20 @@ export function shakeWordPreview(word) {
         }
     }
 }
+
+// Всплывающее «+20» над монетной ячейкой
+export function showCoinGain(cell, amount) {
+    if (!cell || !amount) return;
+
+    const rect = cell.getBoundingClientRect();
+    const label = document.createElement('span');
+    label.className = 'coin-gain';
+    label.textContent = `+${amount}`;
+    label.setAttribute('aria-hidden', 'true');
+    label.style.left = `${rect.left + rect.width / 2}px`;
+    label.style.top = `${rect.top}px`;
+
+    document.body.appendChild(label);
+
+    window.setTimeout(() => label.remove(), prefersReducedMotion() ? 650 : 1000);
+}

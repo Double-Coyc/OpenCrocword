@@ -10,6 +10,12 @@ export const BONUS_REWARD = 10;    // монеты за бонусное сло�
 export const KEY_REWARD = 100;     // монеты за ключевое слово
 export const HINT_COST = 25;       // монеты за подсказку
 
+// Копилка: доля каждого заработка, которую можно забрать вручную из меню
+export const BANK_RATE = 0.1;
+
+// Монетные ячейки: значение зависит от полосы уровней
+export const COIN_CELL_VALUES = [10, 20, 30];
+
 // Награда за первое прохождение уровня:
 // 40 + 12 * (слов в сетке) + 4 * min(номер уровня, 15)
 export const LEVEL_REWARD_BASE = 40;
@@ -26,7 +32,7 @@ export const EPISODE_TITLE = 'Эпизод 1 · Джунгли';
 
 // Сохранение
 export const SAVE_KEY = 'crocword_save';
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 // Отладка: все console.log спрятаны за флагом
 export const DEBUG = false;

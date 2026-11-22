@@ -3,9 +3,9 @@
 import { CELL_SIZE, TOTAL_LEVELS } from '../core/constants.js';
 import { state } from '../core/state.js';
 import { getProgressEntry, saveGameData } from '../core/storage.js';
-import { flyLetter, prefersReducedMotion } from '../ui/animations.js';
+import { flyLetter, prefersReducedMotion, showCoinGain } from '../ui/animations.js';
 import { showLevelComplete } from '../ui/level-complete.js';
-import { awardLevelCompletion } from './economy.js';
+import { addEarnedCoins, awardLevelCompletion } from './economy.js';
 import { renderLevelMenu } from './menu.js';
 
 export function renderGrid(levelData) {
@@ -50,6 +50,13 @@ export function renderGrid(levelData) {
     const rows = maxRow + 1;
     const cols = maxCol + 1;
 
+    // Монетные ячейки уровня и уже забранные из них монеты
+    const coinMap = new Map();
+    (levelData.coinCells || []).forEach(cell => {
+        coinMap.set(`${cell.row},${cell.col}`, cell.value);
+    });
+    const claimedCoins = new Set(getProgressEntry(state.currentLevel).claimedCoins);
+
     gridContainer.innerHTML = '';
     gridContainer.style.display = 'grid';
     gridContainer.style.gridTemplateColumns = `repeat(${cols}, ${CELL_SIZE}px)`;
@@ -74,6 +81,14 @@ export function renderGrid(levelData) {
             // Буква скрыта: показываем пустой слот, сама буква лежит в data-letter
             cell.dataset.letter = letter || '';
             cell.textContent = '';
+
+            const coinKey = `${row},${col}`;
+            const coinValue = coinMap.get(coinKey);
+            if (coinValue) {
+                cell.classList.add('coin-cell');
+                cell.dataset.coin = String(coinValue);
+                if (claimedCoins.has(coinKey)) cell.classList.add('coin-claimed');
+            }
 
             fragment.appendChild(cell);
         }
@@ -106,9 +121,9 @@ export function revealWord(word, silent = false, sources = null) {
     state.foundWords.add(word);
     getProgressEntry(state.currentLevel).found = [...state.foundWords];
 
-    // Восстановление после перерисовки — без анимации
+    // Восстановление после перерисовки — без анимации и без монет
     if (silent) {
-        targets.forEach(fillTarget);
+        targets.forEach(target => fillTarget(target, true));
         return;
     }
 
@@ -149,10 +164,32 @@ export function revealWord(word, silent = false, sources = null) {
     });
 }
 
-function fillTarget({ cell, letter }) {
+function fillTarget({ cell, letter }, silent = false) {
     cell.textContent = cell.dataset.letter || letter;
     cell.classList.remove('empty');
     cell.classList.add('filled', 'found');
+
+    if (!silent) claimCoinCell(cell);
+}
+
+// Монетная ячейка: начисляется один раз, факт хранится в claimedCoins уровня
+function claimCoinCell(cell) {
+    const value = Number(cell.dataset.coin) || 0;
+    if (!value) return;
+
+    const key = `${cell.dataset.row},${cell.dataset.col}`;
+    const entry = getProgressEntry(state.currentLevel);
+
+    if (entry.claimedCoins.includes(key)) {
+        cell.classList.add('coin-claimed');
+        return;
+    }
+
+    entry.claimedCoins.push(key);
+    cell.classList.add('coin-claimed');
+
+    addEarnedCoins(value);
+    showCoinGain(cell, value);
 }
 
 // Восстанавливает уже найденные слова после перерисовки сетки

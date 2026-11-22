@@ -58,6 +58,15 @@ export function normalizeLevel(levelData) {
         bonusWords: Array.isArray(levelData.bonusWords)
             ? levelData.bonusWords.map(word => String(word).toUpperCase())
             : [],
+        coinCells: Array.isArray(levelData.coinCells)
+            ? levelData.coinCells
+                .filter(cell => cell && Number.isInteger(cell.row) && Number.isInteger(cell.col))
+                .map(cell => ({
+                    row: cell.row,
+                    col: cell.col,
+                    value: Number(cell.value) || 0
+                }))
+            : [],
         keyWord: typeof levelData.keyWord === 'string' ? levelData.keyWord.toUpperCase() : '',
         theme: THEMES.includes(levelData.theme) ? levelData.theme : 'normal'
     };

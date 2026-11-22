@@ -46,6 +46,7 @@ export function migrateSave(raw) {
     const migrated = {
         version: SAVE_VERSION,
         coins: Number.isFinite(save.coins) ? save.coins : DEFAULT_COINS,
+        bank: Number.isFinite(save.bank) ? Math.max(0, Math.floor(save.bank)) : 0,
         level: Number.isFinite(save.level) ? save.level : DEFAULT_LEVEL,
         progress: {}
     };
@@ -82,6 +83,7 @@ export function saveGameData() {
     const gameData = {
         version: SAVE_VERSION,
         coins: state.currentCoins,
+        bank: state.bankCoins,
         level: state.currentLevel,
         progress: state.levelProgress
     };
@@ -104,6 +106,7 @@ export function loadGameData() {
         const save = migrateSave(raw);
 
         state.currentCoins = save.coins;
+        state.bankCoins = save.bank;
         state.currentLevel = save.level;
         state.levelProgress = save.progress;
 
@@ -114,6 +117,7 @@ export function loadGameData() {
     } catch (error) {
         console.warn('Не удалось прочитать сохранение, берём значения по умолчанию:', error);
         state.currentCoins = DEFAULT_COINS;
+        state.bankCoins = 0;
         state.currentLevel = DEFAULT_LEVEL;
         state.levelProgress = {};
         return false;

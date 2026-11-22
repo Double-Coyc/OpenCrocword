@@ -5,6 +5,7 @@ import { DEFAULT_COINS, DEFAULT_LEVEL } from './constants.js';
 
 export const state = {
     currentCoins: DEFAULT_COINS,
+    bankCoins: 0,
     currentLevel: DEFAULT_LEVEL,
 
     // Данные текущего уровня
@@ -12,6 +13,7 @@ export const state = {
         words: [],
         grid: [],
         bonusWords: [],
+        coinCells: [],
         keyWord: '',
         theme: 'normal'
     },
